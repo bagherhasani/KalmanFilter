@@ -18,6 +18,7 @@ Input example:
 """
 
 
+
 from cProfile import label
 
 from filterpy.kalman import KalmanFilter
@@ -104,24 +105,46 @@ class KF:
         self.predict()
         self.update(measured_position)
 
-        position=float(self.kf.x[0])
-        velocity= float(self.kf.x[1])
+        position=float(self.kf.x.flatten()[0])
+        velocity= float(self.kf.x.flatten()[1])
 
 
         return position,velocity
     
 
 
+    def predict_future(self,seconds_ahead):
+        pos=float(self.kf.x.flatten()[0])
+        vel=float(self.kf.x.flatten()[1])
+
+        future_pos=pos+(vel*seconds_ahead)
+
+        return future_pos
 
 
 if __name__=="__main__":
 
-    kf=KF(0.5,5.0,1.0)
+    kf=KF(0.1,5.0,0.0)
 
-    measurements= [5.0, 4.7, 4.3, 4.1]
+    measurements = [
+    5.00, 4.97, 4.93, 4.90, 4.86,
+    4.83, 4.79, 4.76, 4.72, 4.69,
+    4.65, 4.62, 4.58, 4.55, 4.51,
+    4.48, 4.44, 4.41, 4.37, 4.34,
+    4.30, 4.27, 4.23, 4.20, 4.16,
+    4.13, 4.09, 4.06, 4.02, 3.99,
+    3.95, 3.92, 3.88, 3.85, 3.81,
+    3.78, 3.74, 3.71, 3.67, 3.64,
+    3.60, 3.57, 3.53, 3.50, 3.46,
+    3.43, 3.39, 3.36, 3.32, 3.29,
+    3.25, 3.22, 3.18, 3.15, 3.11,
+    3.08, 3.04, 3.01, 2.97, 2.94
+]
 
     acutal=[]
     kf_esitmated=[]
+    future_prediction=[]
+    seconds_ahead=0.5
 
     for item in measurements:
         pos,vel=kf.process_measurement(item)
@@ -132,8 +155,24 @@ if __name__=="__main__":
         acutal.append(item)
         kf_esitmated.append(pos)
 
-    plt.plot(acutal,label="actual / zed raw")
-    plt.plot(kf_esitmated,label="kf-estimated")
+        #future pos
+        future_pos=kf.predict_future(seconds_ahead)
+        future_prediction.append(future_pos)
+
+
+    time_steps = list(range(len(measurements)))
+
+    steps_ahead = int(seconds_ahead / kf.dt)
+    future_time_steps = [t + steps_ahead for t in time_steps]
+
+    plt.plot(time_steps, acutal, label="actual / zed raw")
+    plt.plot(time_steps, kf_esitmated, label="kf-estimated")
+    plt.plot(
+        future_time_steps,
+        future_prediction,
+        label=f"future prediction {seconds_ahead}s ahead"
+    )
+
     plt.xlabel("Time step")
     plt.ylabel("Distance from robot (m)")
     plt.legend()
